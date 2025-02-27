@@ -1,5 +1,3 @@
-# ControlNet控制整体布局，Stable Diffusion调整全局风格
-
 # 导入所需的模块，用于图像处理、模型加载和生成图像
 import torch  # PyTorch库，用于张量操作和模型推理
 import numpy as np  # NumPy库，用于数组操作
@@ -51,11 +49,15 @@ def get_mask_from_segmentation_map(seg_map: torch.Tensor):
 image = load_image(img_src).resize((768, 512))  # 加载本地图像并调整大小为768x512像素
 
 # 使用Mask2Former模型进行语义分割
+print("=== 开始加载 Mask2Former 模型 ===")
 processor = AutoImageProcessor.from_pretrained("facebook/mask2former-swin-large-ade-semantic")  # 加载预训练的图像处理器
 inputs = processor(images=[image], return_tensors="pt")  # 预处理图像并转换为PyTorch张量
 model = Mask2FormerForUniversalSegmentation.from_pretrained("facebook/mask2former-swin-large-ade-semantic")  # 加载预训练的Mask2Former模型
+print("=== Mask2Former 模型加载完成 ===")
+print("=== 开始语义分割推理 ===")
 outputs = model(**inputs)  # 运行模型进行语义分割推理
 predicted_semantic_map = processor.post_process_semantic_segmentation(outputs, target_sizes=[image.size[::-1]])[0]  # 后处理获取语义分割图
+print("=== 语义分割推理完成 ===")
 
 # 从语义分割图生成掩码和对应的标签
 masks, labels = get_mask_from_segmentation_map(predicted_semantic_map)  # 调用函数生成掩码和标签
@@ -70,6 +72,7 @@ checkpoint_name = "lllyasviel/control_v11p_sd15_mlsd"  # ControlNet检查点名�
 model_name = "runwayml/stable-diffusion-v1-5"  # Stable Diffusion模型名称
 
 # 加载ControlNet模型和Stable Diffusion生成管道
+print("=== 开始加载 ControlNet 和 StableDiffusion 模型 ===")
 controlnet = ControlNetModel.from_pretrained(
     checkpoint_name, 
     torch_dtype=torch.float16,  # 使用半精度浮点数以节省内存
@@ -81,6 +84,7 @@ pipe = StableDiffusionControlNetPipeline.from_pretrained(
     torch_dtype=torch.float16,  # 使用半精度浮点数
     cache_dir=cache_dir  # 指定缓存目录
 )
+print("=== ControlNet 和 StableDiffusion 模型加载完成 ===")
 pipe.scheduler = UniPCMultistepScheduler.from_config(pipe.scheduler.config)  # 设置调度器为UniPCMultistepScheduler
 pipe.enable_model_cpu_offload()  # 启用模型CPU卸载，优化GPU内存使用
 
@@ -95,6 +99,8 @@ object_mask = transforms.ToPILImage()(object_mask.unsqueeze(0))  # 将对象掩�
 # 使用管道生成图像
 prompt = ["A warm and cozy bedroom, furnished with blue and gray colors, and a wooden armchair. simplistic style"] * 4  # 定义生成图像的提示词，重复4次
 generator = [torch.Generator(device="cuda").manual_seed(int(i)) for i in np.random.randint(50, size=len(prompt))]  # 为每张图像生成随机种子
+print("=== 开始生成图像 ===")
+print(f"当前内存使用情况：{torch.cuda.memory_allocated()/1024**2:.2f}MB")
 output = pipe(
     prompt,  # 输入提示词
     image=masked_control_image,  # 输入遮蔽后的控制图像
@@ -102,8 +108,11 @@ output = pipe(
     num_inference_steps=30,  # 设置推理步数为30
     generator=generator,  # 使用指定的随机种子
 )
+print("=== 图像生成完成 ===")
+print(f"生成后内存使用情况：{torch.cuda.memory_allocated()/1024**2:.2f}MB")
 
 # 使用Matplotlib显示生成的图像网格
+print("=== 开始图像可视化 ===")
 fig, axes = plt.subplots(3, 3, figsize=(15, 15))  # 创建3x3的子图布局，设置画布大小为15x15英寸
 
 # 显示原始图像
