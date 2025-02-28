@@ -1,3 +1,5 @@
+# ControlNet控制整体布局，Stable Diffusion调整全局风格
+
 # 导入所需的模块，用于图像处理、模型加载和生成图像
 import torch  # PyTorch库，用于张量操作和模型推理
 import numpy as np  # NumPy库，用于数组操作
@@ -10,7 +12,6 @@ from diffusers import ControlNetModel, StableDiffusionControlNetPipeline, UniPCM
 from diffusers.utils import load_image  # Diffusers工具函数，用于加载图像
 import matplotlib.pyplot as plt  # Matplotlib库，用于图像可视化
 import urllib.request  # urllib.request模块，用于从URL下载文件
-
 # 定义示例图片的URL地址
 raw_url = "https://raw.githubusercontent.com/naderAsadi/DesignGenie/main/examples/images/sample_input.png"
 try:
